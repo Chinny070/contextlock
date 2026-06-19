@@ -4,9 +4,6 @@ import type { CalldataEncodable } from "genlayer-js/types";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTEXTLOCK_CONTRACT_ADDRESS || "";
 
-let connectedClient: ReturnType<typeof createClient> | null = null;
-let connectedAddress: string | null = null;
-
 export function getContractAddress(): string {
   return CONTRACT_ADDRESS;
 }
@@ -24,46 +21,39 @@ export async function connectWallet(): Promise<string | null> {
   if (typeof window === "undefined" || !window.ethereum) return null;
 
   try {
+    const chainIdHex = "0x" + studionet.id.toString(16);
+
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chainIdHex }],
+      });
+    } catch (switchError: unknown) {
+      const err = switchError as { code?: number };
+      if (err.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: chainIdHex,
+            chainName: studionet.name,
+            rpcUrls: studionet.rpcUrls.default.http,
+            nativeCurrency: studionet.nativeCurrency,
+          }],
+        });
+      } else {
+        throw switchError;
+      }
+    }
+
     const accounts = await window.ethereum.request({
       method: "eth_requestAccounts",
     }) as string[];
 
-    const addr = accounts[0];
-    if (!addr) return null;
-
-    connectedClient = createClient({
-      chain: studionet,
-      account: addr as `0x${string}`,
-      provider: window.ethereum,
-    });
-
-    await connectedClient.connect("studionet");
-
-    connectedAddress = addr;
-    return addr;
+    return accounts[0] || null;
   } catch (e) {
     console.error("Wallet connection failed:", e);
     return null;
   }
-}
-
-function ensureClient(fromAddress: string): ReturnType<typeof createClient> {
-  if (connectedClient && connectedAddress === fromAddress) {
-    return connectedClient;
-  }
-
-  if (typeof window === "undefined" || !window.ethereum) {
-    throw new Error("MetaMask not available");
-  }
-
-  connectedClient = createClient({
-    chain: studionet,
-    account: fromAddress as `0x${string}`,
-    provider: window.ethereum,
-  });
-
-  connectedAddress = fromAddress;
-  return connectedClient;
 }
 
 export async function callContractWrite(
@@ -74,9 +64,15 @@ export async function callContractWrite(
   const address = getContractAddress();
   if (!address) throw new Error("Contract address not configured");
 
-  const client = ensureClient(fromAddress);
+  if (typeof window === "undefined" || !window.ethereum) {
+    throw new Error("MetaMask not available");
+  }
 
-  await client.connect("studionet");
+  const client = createClient({
+    chain: studionet,
+    account: fromAddress as `0x${string}`,
+    provider: window.ethereum,
+  });
 
   const txHash = await client.writeContract({
     address: address as `0x${string}`,
@@ -102,7 +98,7 @@ export async function callContractRead(method: string, args: unknown[]): Promise
   const address = getContractAddress();
   if (!address) throw new Error("Contract address not configured");
 
-  const client = connectedClient || createClient({ chain: studionet });
+  const client = createClient({ chain: studionet });
 
   const result = await client.readContract({
     address: address as `0x${string}`,
@@ -113,15 +109,13 @@ export async function callContractRead(method: string, args: unknown[]): Promise
   return typeof result === "string" ? result : JSON.stringify(result);
 }
 
-interface EthereumProvider {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-  on: (event: string, callback: (...args: unknown[]) => void) => void;
-  removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
-  [key: string]: unknown;
-}
-
 declare global {
   interface Window {
-    ethereum?: EthereumProvider;
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, callback: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+      [key: string]: unknown;
+    };
   }
 }
