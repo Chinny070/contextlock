@@ -19,8 +19,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ContextLock — GenLayer Execution Guard",
-  description: "ContextLock makes execution conditional on interpreted reality. Powered by GenLayer consensus.",
+  title: "Kwest — Decentralized Task & Reward Platform",
+  description: "Complete quests, earn USDC rewards. A decentralized task and reward platform on Base.",
 };
 
 export default function RootLayout({
