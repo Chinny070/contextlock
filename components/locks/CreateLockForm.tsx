@@ -49,7 +49,8 @@ export default function CreateLockForm() {
       toast.success("ContextLock created successfully");
       router.push(`/locks/${lock.id}`);
     } catch (err) {
-      toast.error("Failed to create lock: " + (err instanceof Error ? err.message : "Unknown error"));
+      const msg = err instanceof Error ? err.message : typeof err === "object" && err !== null && "message" in err ? String((err as Record<string, unknown>).message) : JSON.stringify(err);
+      toast.error("Failed to create lock: " + msg);
     } finally {
       setIsSubmitting(false);
     }

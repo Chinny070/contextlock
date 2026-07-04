@@ -112,7 +112,8 @@ export default function ExecutePage() {
             if (contractResult) break;
           }
         } catch (genErr) {
-          toast.warning("GenLayer unavailable, using simulated consensus...");
+          const errMsg = genErr instanceof Error ? genErr.message : JSON.stringify(genErr);
+          toast.warning("GenLayer error: " + errMsg + " — using simulated consensus...");
           console.error("GenLayer error:", genErr);
         }
       }
