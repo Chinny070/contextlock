@@ -1,77 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useAuth } from "@/lib/kwest/auth";
+import { useWallet } from "@/lib/wallet/context";
 import { shortenAddress } from "@/lib/utils/format";
 import Button from "../ui/Button";
-import { Compass, Plus, Shield, FileText, Gift } from "lucide-react";
+import { Shield, LayoutDashboard, FlaskConical, Plus } from "lucide-react";
 
 export default function Navbar() {
-  const { address, isAuthenticated, login, logout, isLoading } = useAuth();
+  const { address, isConnecting, connect, disconnect } = useWallet();
 
   return (
     <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <Link href="/kwest/browse" className="flex items-center gap-2">
-              <Image src="/kwest-logo.svg" alt="Kwest" width={120} height={32} className="h-8 w-auto" priority />
+            <Link href="/" className="flex items-center gap-2">
+              <Shield className="w-6 h-6 text-blue-500" />
+              <span className="text-lg font-bold text-white font-mono">ContextLock</span>
             </Link>
-            {isAuthenticated && (
+            {address && (
               <div className="hidden md:flex items-center gap-1">
                 <Link
-                  href="/kwest/browse"
+                  href="/dashboard"
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
                 >
-                  <Compass className="w-4 h-4" />
-                  Browse
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
                 </Link>
                 <Link
-                  href="/kwest/create"
+                  href="/locks/new"
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  Create
+                  New Lock
                 </Link>
                 <Link
-                  href="/kwest/submissions"
+                  href="/demo"
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
                 >
-                  <FileText className="w-4 h-4" />
-                  My Submissions
-                </Link>
-                <Link
-                  href="/kwest/validate"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-                >
-                  <Shield className="w-4 h-4" />
-                  Validate
-                </Link>
-                <Link
-                  href="/kwest/claim"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-                >
-                  <Gift className="w-4 h-4" />
-                  Claim
+                  <FlaskConical className="w-4 h-4" />
+                  Demo
                 </Link>
               </div>
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            {isAuthenticated && address ? (
+            {address ? (
               <div className="flex items-center gap-3">
                 <span className="text-sm font-mono text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg">
                   {shortenAddress(address)}
                 </span>
-                <Button variant="ghost" size="sm" onClick={logout}>
+                <Button variant="ghost" size="sm" onClick={disconnect}>
                   Disconnect
                 </Button>
               </div>
             ) : (
-              <Button onClick={login} disabled={isLoading}>
-                {isLoading ? "Loading..." : "Connect Wallet"}
+              <Button onClick={connect} disabled={isConnecting}>
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
               </Button>
             )}
           </div>

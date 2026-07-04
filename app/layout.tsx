@@ -19,8 +19,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kwest — Decentralized Task & Reward Platform",
-  description: "Complete quests, earn USDC rewards. A decentralized task and reward platform on Base.",
+  title: "ContextLock — GenLayer Execution Guard Protocol",
+  description: "Lock assumptions, check reality, and let GenLayer validators decide whether actions should execute, pause, or reject.",
 };
 
 export default function RootLayout({

@@ -1,14 +1,13 @@
 "use client";
 
 import { ReactNode } from "react";
-import { AuthProvider } from "@/lib/kwest/auth";
-import { Toaster } from "sonner";
+import { WalletProvider } from "@/lib/wallet/context";
+import AppShell from "@/components/layout/AppShell";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      {children}
-      <Toaster theme="dark" position="bottom-right" richColors />
-    </AuthProvider>
+    <WalletProvider>
+      <AppShell>{children}</AppShell>
+    </WalletProvider>
   );
 }
