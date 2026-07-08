@@ -1,4 +1,4 @@
-# v0.2.16
+# v0.3.0
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 from genlayer import *
@@ -33,9 +33,28 @@ class ContextLockGuard(gl.Contract):
         if request_id in self.results:
             return
 
-        prompt = f"""You are a ContextLock execution reviewer for the GenLayer protocol.
+        evidence_data = json.loads(evidence_packet)
+        evidence_urls = []
+        if isinstance(evidence_data, dict):
+            sources = evidence_data.get("sources", [])
+            for src in sources:
+                url = src.get("url", "")
+                if url and url.startswith("http"):
+                    evidence_urls.append(url)
 
-Your role: decide whether a requested action should still execute, given the original locked assumptions and the current real-world evidence.
+        def fetch_and_review():
+            live_evidence = ""
+            for url in evidence_urls:
+                try:
+                    page = gl.nondet.web.render(url, mode="text", wait_after_loaded="3s")
+                    content = page[:3000]
+                    live_evidence += f"\n\n--- Live data from {url} ---\n{content}"
+                except Exception:
+                    live_evidence += f"\n\n--- Could not fetch {url} ---"
+
+            prompt = f"""You are a ContextLock execution reviewer for the GenLayer protocol.
+
+Your role: decide whether a requested action should still execute, given the original locked assumptions and LIVE evidence fetched from real sources.
 
 ## Original Instruction
 Action Title: {action_title}
@@ -56,37 +75,45 @@ Action Description: {action_description}
 ## Requested Action Now
 {requested_action}
 
-## Current Context Summary
+## Current Context (submitted by user)
 {current_context_summary}
 
 ## What Changed Since Lock Was Created
 {changed_conditions}
 
-## Evidence Packet
+## User-Submitted Evidence Packet
 {evidence_packet}
 
-## Your Task
-Evaluate whether the requested action should still execute. Compare each original assumption against the current evidence. Assess risk, evidence quality, and whether conditions still support execution.
+## LIVE Evidence Fetched By Validators
+The following data was fetched directly from the evidence source URLs at execution time. Use this to VERIFY or CONTRADICT the user-submitted claims above. If live data conflicts with user claims, trust the live data.
+{live_evidence}
 
-EXECUTE: action matches original instruction, assumptions still valid, evidence fresh, risk within tolerance, no contradictions.
-PAUSE: evidence stale or incomplete, conditions unstable, more checking needed.
-REJECT: action no longer matches lock, key assumption contradicted, risk exceeds tolerance, evidence suggests unsafe.
-HUMAN_APPROVAL_REQUIRED: case ambiguous but high-impact, evidence conflicts, risk high or critical, human approval policy requires escalation.
+## Your Task
+1. Compare each original locked assumption against BOTH the user-submitted evidence AND the live-fetched evidence.
+2. If live evidence contradicts user claims (e.g., user says price is $1.89 but live data shows $3.50), flag the contradiction and weigh the live data more heavily.
+3. Assess risk, evidence freshness, and whether conditions still support execution.
+
+Verdicts:
+EXECUTE: assumptions still valid, live evidence confirms conditions, risk within tolerance.
+PAUSE: live evidence is inconclusive or partially contradicts claims, more checking needed.
+REJECT: live evidence contradicts key assumptions, risk exceeds tolerance, action unsafe.
+HUMAN_APPROVAL_REQUIRED: live evidence conflicts with user claims, case is ambiguous, or human approval policy triggers.
 
 Respond using ONLY the following JSON format:
 {{
   "decision": "EXECUTE or PAUSE or REJECT or HUMAN_APPROVAL_REQUIRED",
   "confidence": "LOW or MEDIUM or HIGH",
   "risk_level": "LOW or MEDIUM or HIGH or CRITICAL",
-  "reason_summary": "string explaining the decision",
+  "reason_summary": "string explaining the decision, referencing live evidence where relevant",
   "assumption_checks": [
     {{
       "assumption": "the original assumption text",
       "status": "SUPPORTED or WEAKLY_SUPPORTED or CONTRADICTED or UNKNOWN",
-      "note": "explanation"
+      "note": "explanation referencing live data if available"
     }}
   ],
   "evidence_quality": "POOR or LIMITED or GOOD or STRONG",
+  "live_data_used": true,
   "recommended_next_step": "what to do next"
 }}
 It is mandatory that you respond only using the JSON format above,
@@ -94,15 +121,13 @@ nothing else. Don't include any other words or characters,
 your output must be only JSON without any formatting prefix or suffix.
 This result should be perfectly parsable by a JSON parser without errors.
 """
-
-        def get_review_result():
             result = gl.nondet.exec_prompt(prompt)
             result = result.replace("```json", "").replace("```", "")
             print(result)
             return result
 
         result = gl.eq_principle.prompt_comparative(
-            get_review_result,
+            fetch_and_review,
             "The value of decision must match exactly. Both must return the same verdict: EXECUTE, PAUSE, REJECT, or HUMAN_APPROVAL_REQUIRED.",
         )
 
@@ -122,6 +147,7 @@ This result should be perfectly parsable by a JSON parser without errors.
             "reason_summary": parsed.get("reason_summary", ""),
             "assumption_checks": parsed.get("assumption_checks", []),
             "evidence_quality": parsed.get("evidence_quality", "LIMITED"),
+            "live_data_used": parsed.get("live_data_used", False),
             "recommended_next_step": parsed.get("recommended_next_step", ""),
         }
 
