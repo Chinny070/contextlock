@@ -47,11 +47,4 @@ next-env.d.ts
 /cache
 /typechain-types
 
-# kwest (separate project)
-/app/kwest/
-/contracts/kwest/
-/lib/kwest/
-/public/kwest-logo.svg
-/scripts/
-/hardhat.config.ts
 /latch-beta-security-report-2026-07-02.md
